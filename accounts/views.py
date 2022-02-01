@@ -25,24 +25,24 @@ def login_attempt(request):
         user_obj = User.objects.filter(username = username).first()
         if user_obj is None:
             messages.success(request, 'User not found.')
-            return redirect('/login')
+            return redirect('/accounts/login')
         
         
         profile_obj = Profile.objects.filter(user = user_obj ).first()
 
         if not profile_obj.is_verified:
             messages.success(request, 'Profile is not verified check your mail.')
-            return redirect('/login')
+            return redirect('/accounts/login')
 
         user = authenticate(username = username , password = password)
         if user is None:
             messages.success(request, 'Wrong password.')
-            return redirect('login')
+            return redirect('/accounts/login')
         
         login(request , user)
         return redirect('/')
 
-    return render(request , 'login.html')
+    return render(request,'login.html')
 
 
 def register_attempt(request):
@@ -109,6 +109,7 @@ def success(request):
 
 def token_send(request):
     return render(request , 'token_send.html')
+
 
 
 
