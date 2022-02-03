@@ -110,7 +110,12 @@ def success(request):
 def token_send(request):
     return render(request , 'token_send.html')
 
+def ChangePassword(request):
 
+    return render(request , 'change-password.html')
+
+def ForgetPassword(request):
+    return render(request , 'forget-password.html')
 
 
 
