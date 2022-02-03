@@ -11,7 +11,7 @@ from django.conf import settings
 from django.core.mail import send_mail
 from django.contrib.auth import authenticate,login
 from django.contrib.auth.decorators import login_required
-from .helpers import *
+from .helpers import send_forget_password_mail,send_mail_after_registration
 
 @login_required(login_url="/")
 def home(request):
@@ -111,10 +111,58 @@ def token_send(request):
     return render(request , 'token_send.html')
 
 def ChangePassword(request):
+    context = {}
+
+    try:
+        profile_obj = Profile.objects.filter(forget_password_token = token).first()
+        context = {'user_id': profile_obj.user_id}
+        if request.method == 'POST':
+            new_password = request.POST.get('new_password')
+            reconfirm_password = request.POST.get('reconfirm_password')
+            user_id = request.POST.get('user_id')
+
+            if user_id is None:
+                messages.success(request,"User not Found")
+                return redirect(f'/change-password/{token}/')
+            if new_password != reconfirm_password:
+                messages.success(request,"Both password should be same")
+                return redirect(f'/change-password/{token}/')
+
+
+
+        user_obj = User.objects.get(id = user_id)
+        user_obj.set_password(new_password)
+        user_obj.save()
+        return redirect("/login/")
+
+    except Exception as e:
+        print(e)
 
     return render(request , 'change-password.html')
 
+
+
 def ForgetPassword(request):
+    try:
+        if request.method == 'POST':
+            username = request.POST.get('username')
+            if not User.objects.filter(username=username).first():
+                messages.success(request, 'Not user found with this username.')
+                return redirect('/forget-password/')
+            user_obj = User.objects.get(username = username)
+            token = str(uuid.uuid4())
+            profile_obj= Profile.objects.get(user = user_obj)
+            profile_obj.forget_password_token = token
+            profile_obj.save()
+            send_forget_password_mail(user_obj.email,token)
+            messages.success(request, 'An Email is sent to your email id.')
+            return redirect('/forget-password/')
+
+            
+    
+    except Exception as e:
+        print(e)
+
     return render(request , 'forget-password.html')
 
 

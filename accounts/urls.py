@@ -11,6 +11,6 @@ urlpatterns = [
     path('verify/<auth_token>' , verify , name="verify"),
     path('error' , error_page , name="error"),
     path('login/' , login_attempt , name="login_attempt"),
-    path('change-password' , ChangePassword , name="change_password"),
-    path('forget-password/' , ForgetPassword , name="forget_password"),
+    path('change-password/<token>' , ChangePassword , name="change_password"),
+    path('forget-password' , ForgetPassword , name="forget_password"),
      ]

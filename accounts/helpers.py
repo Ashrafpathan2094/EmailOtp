@@ -13,4 +13,12 @@ def send_mail_after_registration(email,token):
     recipient_list = [email]
     send_mail(subject, message, email_from, recipient_list)
 
+def send_forget_password_mail(email,token):
+    subject = "Your Forget Password link is"
+    message = f"Hii Use this link to reset your password http://127.0.0.1:8000/change-password/{token}"
+    email_from = settings.EMAIL_HOST_USER
+    recipient_list = [email]
+    send_mail(subject, message, email_from, recipient_list)
+    return True
+
     
