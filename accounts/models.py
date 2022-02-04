@@ -7,7 +7,7 @@ class Profile(models.Model):
     is_verified = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     auth_token = models.CharField(max_length=100)
-    forget_password_token = models.CharField(max_length=100)
+    forget_password_token = models.CharField(max_length=100,blank=True)
 
 
     def __str__(self):
