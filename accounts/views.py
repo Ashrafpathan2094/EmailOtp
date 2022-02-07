@@ -1,48 +1,51 @@
-from lib2to3.pgen2 import token
-import profile
-from urllib.request import Request
+from wsgiref import validate
 from accounts.models import Profile
 from django.shortcuts import redirect, render
 from django.contrib.auth.models import User
 from django.contrib import messages
 from .models import *
 import uuid
-from django.conf import settings
-from django.core.mail import send_mail
-from django.contrib.auth import authenticate,login
+from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
-from .helpers import send_forget_password_mail,send_mail_after_registration
+from .helpers import send_forget_password_mail, send_mail_after_registration
+from django.core.validators import validate_email
 
-@login_required(login_url="/")
+
+
+
+
+
+@login_required(login_url="/login")
 def home(request):
-    return render(request , 'home.html')
+    return render(request, 'home.html')
+
 
 def login_attempt(request):
     if request.method == 'POST':
         username = request.POST.get('username')
         password = request.POST.get('password')
+        incorrect_username_password_message = 'Wrong username or password.'
 
-        user_obj = User.objects.filter(username = username).first()
+        user_obj = User.objects.filter(username=username).first()
         if user_obj is None:
-            messages.success(request, 'User not found.')
-            return redirect('/accounts/login')
-        
-        
-        profile_obj = Profile.objects.filter(user = user_obj ).first()
+            messages.success(request, incorrect_username_password_message)
+            return redirect('/login')
+
+        profile_obj = Profile.objects.filter(user=user_obj).first()
 
         if not profile_obj.is_verified:
-            messages.success(request, 'Profile is not verified check your mail.')
-            return redirect('/accounts/login')
-
-        user = authenticate(username = username , password = password)
-        if user is None:
-            messages.success(request, 'Wrong password.')
+            messages.success(
+                request, 'Profile is not verified check your mail.')
             return redirect('/login')
-        
-        login(request , user)
-        return redirect('/')
 
-    return render(request,'login.html')
+        user = authenticate(username=username, password=password)
+        if user is None:
+            messages.success(request, incorrect_username_password_message)
+            return redirect('/login')
+
+        login(request, user)
+        return redirect('/')
+    return render(request, 'login.html')
 
 
 def register_attempt(request):
@@ -50,37 +53,48 @@ def register_attempt(request):
         username = request.POST.get('username')
         email = request.POST.get('email')
         password = request.POST.get('password')
+        repeat_password = request.POST.get('repeat_password')
 
         try:
 
+          
+            
+
             if User.objects.filter(username=username).first():
-                messages.success(request,'Username Already Taken')
+                messages.success(request, 'Username Already Taken')
                 return redirect('/register')
 
             if User.objects.filter(email=email).first():
-                messages.success(request,'Email Already Taken')
+                messages.success(request, 'Email Already Taken')
+                return redirect('/register')
+            if password != repeat_password:
+                messages.success(request, 'Both Password Should Match')
                 return redirect('/register')
 
-            user_obj = User.objects.create(username=username,email=email)
+            if not validate_email(email):
+                messages.success(request, 'Email Should Be Valid')
+                return redirect('/register')
+
+
+
+            user_obj = User.objects.create(username=username, email=email)
             user_obj.set_password(password)
             user_obj.save()
             auth_token = str(uuid.uuid4())
 
-            profile_obj = Profile.objects.create(user = user_obj,auth_token = auth_token)
+            profile_obj = Profile.objects.create(
+                user=user_obj, auth_token=auth_token)
             profile_obj.save()
-            send_mail_after_registration(email,auth_token)
-            return redirect('/token') 
+            send_mail_after_registration(email, auth_token)
+            return redirect('/token')
 
-        except Exception as e :
+        except Exception as e:
             print(e)
 
-
-    return render(request , 'register.html')
-
+    return render(request, 'register.html')
 
 
-
-def verify(request , auth_token):
+def verify(request, auth_token):
 
     try:
 
@@ -88,91 +102,84 @@ def verify(request , auth_token):
         if profile_obj:
 
             if profile_obj.is_verified:
-                 messages.success(request,'Your account has already been verified')
-                 return redirect('/login')
+                messages.success(
+                    request, 'Your account has already been verified')
+                return redirect('/login')
 
             profile_obj.is_verified = True
             profile_obj.save()
-            messages.success(request,'Your account has been verified')
+            messages.success(request, 'Your account has been verified')
             return redirect('/login')
         else:
             return redirect('/error')
 
-    except Exception as e :
+    except Exception as e:
         print(e)
 
+
 def error_page(request):
-    return  render(request , 'error.html')
+    return render(request, 'error.html')
+
 
 def success(request):
-    return render(request , 'success.html')
+    return render(request, 'success.html')
+
 
 def token_send(request):
-    return render(request , 'token_send.html')
+    return render(request, 'token_send.html')
 
-def ChangePassword(request , token):
+
+def change_password(request, token):
     context = {}
-    
-    
+
     try:
-        profile_obj = Profile.objects.filter(forget_password_token = token).first()
-        context = {'user_id' : profile_obj.user.id}
-        
+        profile_obj = Profile.objects.filter(
+            forget_password_token=token).first()
+        context = {'user_id': profile_obj.user.id}
+
         if request.method == 'POST':
             new_password = request.POST.get('new_password')
             confirm_password = request.POST.get('reconfirm_password')
             user_id = request.POST.get('user_id')
             print(user_id)
-            
-            if user_id is  None:
+
+            if user_id is None:
                 messages.success(request, 'No user id found.')
                 return redirect(f'/change-password/{token}/')
-                
-            
-            if  new_password != confirm_password:
+
+            if new_password != confirm_password:
                 messages.success(request, 'both should  be equal.')
                 return redirect(f'/change-password/{token}/')
-                         
-            
-            user_obj = User.objects.get(id = user_id)
+
+            user_obj = User.objects.get(id=user_id)
             user_obj.set_password(new_password)
+            user_obj.forget_password_token = ''
             user_obj.save()
             messages.success(request, 'Password Changed.')
             return redirect('/login/')
-            
-            
-            
-        
-        
+
     except Exception as e:
         print(e)
-    return render(request , 'change-password.html' , context)
+    return render(request, 'change-password.html', context)
 
 
-
-def ForgetPassword(request):
+def forget_password(request):
     try:
         if request.method == 'POST':
             username = request.POST.get('username')
             if not User.objects.filter(username=username).first():
                 messages.success(request, 'Not user found with this username.')
                 return redirect('/forget-password/')
-            user_obj = User.objects.get(username = username)
+            user_obj = User.objects.get(username=username)
             token = str(uuid.uuid4())
-            profile_obj= Profile.objects.get(user = user_obj)
+            profile_obj = Profile.objects.get(user=user_obj)
             profile_obj.forget_password_token = token
             profile_obj.save()
-            send_forget_password_mail(user_obj.email,token)
+            send_forget_password_mail(user_obj.email, token)
             messages.success(request, 'An Email is sent to your email id.')
             return redirect('/forget-password/')
 
-            
-    
     except Exception as e:
         print(e)
 
-    return render(request,'forget-password.html')
-
-
-
-
+    return render(request, 'forget-password.html')
