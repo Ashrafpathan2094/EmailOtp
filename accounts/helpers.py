@@ -17,7 +17,9 @@ def send_mail_after_registration(email, token):
     send_email(email, subject, message)
 
 
+
 def send_forget_password_mail(email, token):
-    subject = "Your Forget Password link is"
+    subject = "Your Account needs to be verified"
     message = f"Hii Use this link to reset your password http://127.0.0.1:8000/change-password/{token}"
     send_email(email, subject, message)
+
